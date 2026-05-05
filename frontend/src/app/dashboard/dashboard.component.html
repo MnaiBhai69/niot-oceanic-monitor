@@ -1,0 +1,218 @@
+<div class="root-wrap">
+
+  <!-- HEADER -->
+  <header class="hdr">
+    <div class="hdr-title">NIOT <span>OCEANIC MONITOR</span></div>
+    <div class="hdr-right">
+      <div class="live-pill"><span class="pulse"></span>LIVE</div>
+      <div class="clk">{{ currentTime }}</div>
+      <select class="sta-sel" [(ngModel)]="currentKey" (change)="switchStation(currentKey)">
+        <option *ngFor="let s of stations" [value]="s.station_key">{{ s.station_key }}</option>
+      </select>
+      <span class="field-btn">⚙ Field Mapper</span>
+    </div>
+  </header>
+
+  <!-- ERROR BANNER -->
+  <div *ngIf="errorMsg" class="err-banner">⚠ {{ errorMsg }}</div>
+
+  <!-- LOADING -->
+  <div *ngIf="isLoading && !errorMsg" class="loading-wrap">
+    <div class="ld-ring"></div>
+    <div class="ld-txt">CONNECTING TO DATABASE</div>
+    <div class="ld-sub">Fetching station data from MySQL...</div>
+  </div>
+
+  <!-- BODY -->
+  <div class="body-wrap" *ngIf="currentStation && !isLoading">
+
+    <!-- MAIN COLUMN -->
+    <div class="main-col">
+
+      <!-- META STRIP -->
+      <div class="meta-strip">
+        <div class="meta-it"><span class="ml">STATION</span><span class="mv">{{ currentStation.station_name }}</span></div>
+        <div class="meta-it"><span class="ml">TIMESTAMP</span><span class="mv">{{ currentStation.recorded_at ? formatDate(currentStation.recorded_at) : '--' }}</span></div>
+        <div class="meta-it"><span class="ml">LATITUDE</span><span class="mv">{{ (currentStation.latitude||0).toFixed(4) }}° N</span></div>
+        <div class="meta-it"><span class="ml">LONGITUDE</span><span class="mv">{{ (currentStation.longitude||0).toFixed(4) }}° E</span></div>
+        <div class="meta-it"><span class="ml">ALTITUDE</span><span class="mv">{{ currentStation.altitude||0 }} m</span></div>
+        <div class="meta-it"><span class="ml">SUNRISE</span><span class="mv">{{ currentStation.sunrise || '--' }}</span></div>
+        <div class="meta-it"><span class="ml">SUNSET</span><span class="mv">{{ currentStation.sunset || '--' }}</span></div>
+        <div class="meta-it"><span class="ml">GPS SIG</span><span class="mv">{{ currentStation.gps_signal || '--' }}</span></div>
+      </div>
+
+      <!-- ROW 1: 5 cards -->
+      <div class="cards-row">
+        <!-- Air Temperature -->
+        <div class="card c-red">
+          <span class="ci">🌡️</span>
+          <div class="c-lbl">Air Temperature</div>
+          <div class="c-val">{{ (currentStation.air_temp||0).toFixed(2) }}</div>
+          <div class="c-unit">°C</div>
+          <div class="c-sub">CR Temp: <span style="color:var(--amber)">{{ (currentStation.cr_temp||0).toFixed(2) }}°C</span></div>
+          <div class="c-bar"><div class="c-bar-fill" [style.width]="pct(currentStation.air_temp||0,50)" style="background:linear-gradient(90deg,#ff5252,#ff1744)"></div></div>
+        </div>
+
+        <!-- Humidity -->
+        <div class="card c-cyan">
+          <span class="ci">💧</span>
+          <div class="c-lbl">Humidity</div>
+          <div class="c-val">{{ (currentStation.humidity||0).toFixed(2) }}</div>
+          <div class="c-unit">% Relative</div>
+          <div class="c-bar" style="margin-top:20px"><div class="c-bar-fill" [style.width]="(currentStation.humidity||0).toFixed(1)+'%'" style="background:linear-gradient(90deg,#00b8d4,#00e5ff)"></div></div>
+        </div>
+
+        <!-- Rainfall -->
+        <div class="card c-blue">
+          <span class="ci">🌧️</span>
+          <div class="c-lbl">Rainfall</div>
+          <div class="c-val">{{ (currentStation.rain||0).toFixed(2) }}</div>
+          <div class="c-unit">mm</div>
+          <div class="c-sub">Cumulative: <span style="color:#448aff">{{ currentStation.rain_cumulative||0 }} mm</span></div>
+          <div class="c-bar"><div class="c-bar-fill" [style.width]="pct(currentStation.rain||0,50)" style="background:linear-gradient(90deg,#1565c0,#448aff)"></div></div>
+        </div>
+
+        <!-- Battery -->
+        <div class="card c-amber">
+          <span class="ci">🔋</span>
+          <div class="c-lbl">Battery Voltage</div>
+          <div class="c-val">{{ (currentStation.bat_volt||0).toFixed(2) }}</div>
+          <div class="c-unit">V</div>
+          <div class="c-bar" style="margin-top:20px"><div class="c-bar-fill" [style.width]="pct(currentStation.bat_volt||0,15)" style="background:linear-gradient(90deg,#ff6f00,#ffab00)"></div></div>
+        </div>
+
+        <!-- SW Solar Radiation -->
+        <div class="card c-amber">
+          <span class="ci">☀️</span>
+          <div class="c-lbl">SW Solar Rad</div>
+          <div class="c-val">{{ (currentStation.sw_radiation||0).toFixed(2) }}</div>
+          <div class="c-unit">W/m²</div>
+          <div class="c-sub">LW: <span style="color:#e040fb">{{ (currentStation.lw_radiation||0).toFixed(2) }} W/m²</span></div>
+          <div class="c-bar"><div class="c-bar-fill" [style.width]="pct(currentStation.sw_radiation||0,1000)" style="background:linear-gradient(90deg,#ff8f00,#ffca28)"></div></div>
+        </div>
+      </div>
+
+      <!-- ROW 2: 4 cards -->
+      <div class="cards-row2">
+        <!-- Wind Direction -->
+        <div class="card c-purple">
+          <span class="ci">🧭</span>
+          <div class="c-lbl">Wind Direction</div>
+          <div class="c-val">{{ (currentStation.wind_dir||0).toFixed(1) }}</div>
+          <div class="c-unit">° / {{ dirLabel(currentStation.wind_dir||0) }}</div>
+          <div class="c-sub">
+            G.Dir: <span style="color:#e040fb">{{ currentStation.g_wind_dir||0 }}°</span>
+            &nbsp; C.Dir: <span style="color:#e040fb">{{ currentStation.c_wind_dir||0 }}°</span>
+          </div>
+        </div>
+
+        <!-- Wind Gust -->
+        <div class="card c-green">
+          <span class="ci">💨</span>
+          <div class="c-lbl">Wind Gust</div>
+          <div class="c-val">{{ (currentStation.wind_gust||0).toFixed(2) }}</div>
+          <div class="c-unit">m/s</div>
+          <div class="c-sub">G.Heading: <span style="color:var(--green)">{{ currentStation.g_heading||0 }}°</span></div>
+        </div>
+
+        <!-- Air Pressure -->
+        <div class="card c-cyan">
+          <span class="ci">🌐</span>
+          <div class="c-lbl">Air Pressure</div>
+          <div class="c-val" style="font-size:1.4rem">{{ (currentStation.air_pressure||0).toFixed(2) }}</div>
+          <div class="c-unit">hPa</div>
+          <div class="c-bar" style="margin-top:12px"><div class="c-bar-fill" [style.width]="pressurePct(currentStation.air_pressure||0)" style="background:linear-gradient(90deg,#00838f,#00e5ff)"></div></div>
+        </div>
+
+        <!-- Status -->
+        <div class="card c-green">
+          <span class="ci">📡</span>
+          <div class="c-lbl">Status</div>
+          <div class="c-val" style="font-size:1.4rem;color:var(--green)">Active</div>
+          <div class="c-unit">GPS Sig: <span style="color:var(--green)">{{ currentStation.gps_signal||0 }}</span></div>
+          <div class="c-sub" style="margin-top:8px;color:var(--green);font-size:.62rem;letter-spacing:1px">
+            ● {{ (currentStation.gps_signal||0) > 0 ? 'ALL SENSORS NOMINAL' : 'CHECK GPS SIGNAL' }}
+          </div>
+        </div>
+      </div>
+
+      <!-- BOTTOM ROW -->
+      <div class="bottom-row">
+        <!-- Pressure Chart -->
+        <div class="panel" style="border-top:2px solid var(--amber)">
+          <div class="panel-lbl">
+            <span>📈 AIR PRESSURE TREND</span>
+            <span class="panel-val-big">{{ (currentStation.air_pressure||0).toFixed(2) }} HPA</span>
+          </div>
+          <div class="chart-wrap">
+            <canvas #pressCanvas></canvas>
+          </div>
+        </div>
+
+        <!-- Speedometer -->
+        <div class="panel" style="border-top:2px solid var(--cyan)">
+          <div class="panel-lbl">💨 WIND SPEED MONITOR</div>
+          <div class="speedo-wrap">
+            <canvas #speedoCanvas width="260" height="160"></canvas>
+            <div class="speedo-num">
+              <div class="sn">{{ (currentStation.wind_speed||0).toFixed(1) }}</div>
+              <div class="su">m/s</div>
+            </div>
+          </div>
+          <div class="wind-sub-grid">
+            <div class="wsub"><div class="wl">Gust</div><div class="wv">{{ (currentStation.wind_gust||0).toFixed(2) }} m/s</div></div>
+            <div class="wsub"><div class="wl">Direction</div><div class="wv">{{ currentStation.wind_dir||0 }}°</div></div>
+            <div class="wsub"><div class="wl">G.Wind Spd</div><div class="wv">{{ currentStation.g_wind_spd||0 }} m/s</div></div>
+            <div class="wsub"><div class="wl">C.Wind Spd</div><div class="wv">{{ currentStation.c_wind_spd||0 }} m/s</div></div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /main-col -->
+
+    <!-- RIGHT COLUMN -->
+    <div class="right-col">
+      <div class="map-header">
+        <span>📍 STATION NETWORK</span>
+        <span class="mh-station">{{ currentStation.station_name }}</span>
+      </div>
+      <div #mapContainer id="map" style="flex:1;min-height:0;display:block;"></div>
+
+      <!-- Compass -->
+      <div class="compass-section">
+        <div class="compass-lbl">🧭 Wind Compass Rose</div>
+        <div class="compass-row">
+          <canvas #compassCanvas width="110" height="110"></canvas>
+          <div>
+            <div class="wsub wc-sm"><div class="wl">Wind Dir</div><div class="wv">{{ currentStation.wind_dir||0 }}°</div></div>
+            <div class="wsub wc-sm"><div class="wl">Bearing</div><div class="wv">{{ dirLabel(currentStation.wind_dir||0) }}</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Station Info -->
+      <div class="station-info">
+        <div class="si-title">Station Details</div>
+        <div class="si-grid">
+          <div class="si-item"><div class="si-l">CR Temp</div><div class="si-v">{{ (currentStation.cr_temp||0).toFixed(2) }}°C</div></div>
+          <div class="si-item"><div class="si-l">LW Rad</div><div class="si-v">{{ (currentStation.lw_radiation||0).toFixed(2) }} W/m²</div></div>
+          <div class="si-item"><div class="si-l">Record ID</div><div class="si-v">{{ currentStation.record_id || '--' }}</div></div>
+          <div class="si-item"><div class="si-l">Altitude</div><div class="si-v">{{ currentStation.altitude||0 }} m</div></div>
+        </div>
+      </div>
+    </div>
+
+
+
+  <!-- STATUS BAR (inside body-wrap for grid-column span) -->
+  <footer class="status-bar" *ngIf="currentStation && !isLoading">
+    <div class="sb-it ok"><span class="sb-dot"></span>SYSTEM ONLINE</div>
+    <div class="sb-it">DATA INTERVAL: {{ pollIntervalSec }} SEC</div>
+    <div class="sb-it">LAST REFRESH: {{ refreshSec }}s AGO</div>
+    <div class="sb-it">© NIOT CHENNAI · AWS NETWORK</div>
+    <div class="sb-it sb-ml">{{ currentDate }}</div>
+  </footer>
+
+  </div><!-- /body-wrap -->
+
+</div>
